@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   pcl_ros
   cv_bridge
+  tf_conversions
 )
 
 ## System dependencies are found with CMake's conventions
