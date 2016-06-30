@@ -2,6 +2,9 @@
 #define __DISPARITY_TO_POINT_CLOUD_HPP__
 
 #include <ros/ros.h>
+#include <tf/transform_listener.h>
+#include <tf_conversions/tf_eigen.h>
+#include <Eigen/Core>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -20,6 +23,7 @@ class Disparity2PCloud {
   ros::NodeHandle nh_;
   ros::Publisher p_cloud_pub_;
   ros::Subscriber disparity_sub_;
+  tf::TransformListener listener_;
   // TODO import this coefficeint with the calibration file or camera info topic
   float fx_ = 784;
   float fy_ = 784;
@@ -30,7 +34,7 @@ class Disparity2PCloud {
   int threshold_ = 1;
 
  public:
-  Disparity2PCloud() : nh_("~") {
+  Disparity2PCloud() : nh_("~"), listener_(nh_) {
     disparity_sub_ =
         nh_.subscribe("/disparity", 1, &Disparity2PCloud::DisparityCb, this);
 
