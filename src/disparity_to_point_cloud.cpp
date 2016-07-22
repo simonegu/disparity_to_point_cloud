@@ -12,6 +12,25 @@ void Disparity2PCloud::DisparityCb(const sensor_msgs::ImageConstPtr &msg) {
   uchar *pf_m2;
   uchar *pf_p1;
   uchar *pf_p2;
+  tf::StampedTransform transform;
+  try {
+    // look up transform for a point in the camera optical frame to world
+    // coordinates
+    // TODO: investigate lookup transform version of this
+    listener_.lookupTransform("/world", "/camera_optical_frame", ros::Time(0),
+                              transform);
+  }
+  catch (tf::TransformException ex) {
+    ROS_WARN("%s", ex.what());
+  }
+  // transformation in Rotation matrix and translation vector
+  Eigen::Matrix3d R;
+  tf::matrixTFToEigen(transform.getBasis(), R);
+  // std::cout << "Rotation: " << R << std::endl;
+  // get translation
+  Eigen::Vector3d t(transform.getOrigin().x(), transform.getOrigin().y(),
+                    transform.getOrigin().z());
+  Eigen::Vector3d point;
   // cv::Mat discreateDisparity;
   // disparity->image.convertTo(discreateDisparity, CV_32FC1);
   cv::Mat medianFilterd = disparity->image;
@@ -118,7 +137,10 @@ void Disparity2PCloud::DisparityCb(const sensor_msgs::ImageConstPtr &msg) {
           Z = fx_ * base_line_ / disp;
           X = (u - cx_) * Z / fx_;
           Y = (v - cy_) * Z / fy_;
-          cloud->points.push_back(pcl::PointXYZ(X, Y, Z));
+          point << X, Y, Z;
+          Eigen::Vector3d global_p = R * point + t;
+          cloud->points.push_back(
+              pcl::PointXYZ(global_p(0), global_p(1), global_p(2)));
         }
       }
     }
@@ -131,8 +153,7 @@ void Disparity2PCloud::DisparityCb(const sensor_msgs::ImageConstPtr &msg) {
   pcl::toROSMsg(*cloud, output);
   // does not work on the rosbag with the tf broadcaster for the camera position
   output.header.stamp = disparity->header.stamp;
-  // TODO: create ros param for this
-  output.header.frame_id = "/camera_optical_frame";
+  output.header.frame_id = "/world";
   p_cloud_pub_.publish(output);
 }
 
